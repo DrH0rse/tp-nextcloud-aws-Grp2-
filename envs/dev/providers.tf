@@ -28,3 +28,9 @@ provider "aws" {
     }
   }
 }
+
+# Alias sans default_tags — pour les ressources IAM qui n'acceptent pas iam:TagInstanceProfile
+provider "aws" {
+  alias  = "no_tags"
+  region = var.aws_region
+}

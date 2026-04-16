@@ -67,14 +67,19 @@ module "database" {
 module "iam" {
   source = "../../modules/iam"
 
+  providers = {
+    aws         = aws
+    aws.no_tags = aws.no_tags
+  }
+
   project_name         = var.project_name
   environment          = var.environment
   nextcloud_bucket_arn = module.storage.nextcloud_bucket_arn
   db_secret_arn        = module.secrets.db_secret_arn
   admin_secret_arn     = module.secrets.admin_secret_arn
   kms_key_arn          = module.kms.key_arn
-  # Désactivé en formation : iam:CreateRole est bloqué par formation-deny-iam-write
-  create_iam_resources = false
+  create_iam_resources     = true
+  iam_permissions_boundary = "arn:aws:iam::039497794217:policy/formation-permissions-boundary-paris"
 
   depends_on = [module.storage, module.secrets, module.kms]
 }

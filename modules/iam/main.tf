@@ -1,3 +1,13 @@
+terraform {
+  required_providers {
+    aws = {
+      source                = "hashicorp/aws"
+      version               = "~> 5.0"
+      configuration_aliases = [aws.no_tags]
+    }
+  }
+}
+
 # ── IAM Role EC2 ──────────────────────────────────────────────────────────────
 # create_iam_resources = false si iam:CreateRole est bloqué (ex: env formation)
 resource "aws_iam_role" "nextcloud_ec2" {
@@ -18,6 +28,8 @@ resource "aws_iam_role" "nextcloud_ec2" {
       }
     ]
   })
+
+  permissions_boundary = var.iam_permissions_boundary != "" ? var.iam_permissions_boundary : null
 
   tags = {
     Name = "${var.project_name}-${var.environment}-ec2-role"
@@ -143,12 +155,9 @@ resource "aws_iam_role_policy_attachment" "ssm" {
 
 # ── Instance Profile ───────────────────────────────────────────────────────────
 resource "aws_iam_instance_profile" "nextcloud" {
-  count = var.create_iam_resources ? 1 : 0
+  count    = var.create_iam_resources ? 1 : 0
+  provider = aws.no_tags
 
   name = "${var.project_name}-${var.environment}-ec2-profile"
   role = aws_iam_role.nextcloud_ec2[0].name
-
-  tags = {
-    Name = "${var.project_name}-${var.environment}-ec2-profile"
-  }
 }

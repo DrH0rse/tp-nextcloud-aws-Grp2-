@@ -33,3 +33,9 @@ variable "create_iam_resources" {
   type        = bool
   default     = true
 }
+
+variable "iam_permissions_boundary" {
+  description = "ARN de la permissions boundary à attacher au rôle EC2 (requis sur compte formation)"
+  type        = string
+  default     = ""
+}
