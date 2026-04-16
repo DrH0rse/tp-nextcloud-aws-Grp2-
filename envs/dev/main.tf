@@ -17,6 +17,7 @@ module "networking" {
   private_subnet_cidrs = var.private_subnet_cidrs
   availability_zones   = var.availability_zones
   kms_key_arn          = module.kms.key_arn
+  owner_tag            = "etudiant32"
 
   depends_on = [module.kms]
 }
@@ -120,6 +121,7 @@ module "compute" {
   asg_min_size          = var.asg_min_size
   asg_max_size          = var.asg_max_size
   asg_desired_capacity  = var.asg_desired_capacity
+  create_asg            = false
 
   depends_on = [
     module.networking,

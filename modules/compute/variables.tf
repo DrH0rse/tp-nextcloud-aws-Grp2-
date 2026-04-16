@@ -116,8 +116,19 @@ variable "aws_region" {
   default     = "eu-west-3"
 }
 
+variable "create_asg" {
+  description = "Créer l'ASG (false = instance EC2 directe pour comptes formation)"
+  type        = bool
+  default     = true
+}
+
 variable "owner_tag" {
   description = "Tag Owner requis par la policy formation-require-owner-tag"
   type        = string
-  default     = ""
+  nullable    = false
+
+  validation {
+    condition     = trimspace(var.owner_tag) != ""
+    error_message = "owner_tag doit être renseigné et ne peut pas être vide."
+  }
 }

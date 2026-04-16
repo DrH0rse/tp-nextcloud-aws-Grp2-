@@ -122,9 +122,10 @@ resource "aws_security_group" "alb" {
   description = "Security group for Application Load Balancer"
   vpc_id      = aws_vpc.main.id
 
-  tags = {
-    Name = "${var.project_name}-${var.environment}-sg-alb"
-  }
+  tags = merge(
+    { Name = "${var.project_name}-${var.environment}-sg-alb" },
+    var.owner_tag != "" ? { Owner = var.owner_tag } : {}
+  )
 }
 
 resource "aws_vpc_security_group_ingress_rule" "alb_https" {
@@ -151,9 +152,10 @@ resource "aws_security_group" "ec2" {
   description = "Security group for Nextcloud EC2 instances"
   vpc_id      = aws_vpc.main.id
 
-  tags = {
-    Name = "${var.project_name}-${var.environment}-sg-ec2"
-  }
+  tags = merge(
+    { Name = "${var.project_name}-${var.environment}-sg-ec2" },
+    var.owner_tag != "" ? { Owner = var.owner_tag } : {}
+  )
 }
 
 resource "aws_vpc_security_group_ingress_rule" "ec2_from_alb" {
@@ -207,9 +209,10 @@ resource "aws_security_group" "rds" {
   description = "Security group for RDS PostgreSQL"
   vpc_id      = aws_vpc.main.id
 
-  tags = {
-    Name = "${var.project_name}-${var.environment}-sg-rds"
-  }
+  tags = merge(
+    { Name = "${var.project_name}-${var.environment}-sg-rds" },
+    var.owner_tag != "" ? { Owner = var.owner_tag } : {}
+  )
 }
 
 resource "aws_vpc_security_group_ingress_rule" "rds_from_ec2" {

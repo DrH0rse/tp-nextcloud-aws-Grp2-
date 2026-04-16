@@ -15,7 +15,7 @@ output "alb_zone_id" {
 
 output "asg_name" {
   description = "Nom de l'Auto Scaling Group"
-  value       = aws_autoscaling_group.nextcloud.name
+  value       = var.create_asg ? aws_autoscaling_group.nextcloud[0].name : null
 }
 
 output "launch_template_id" {

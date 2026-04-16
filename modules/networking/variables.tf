@@ -43,6 +43,12 @@ variable "kms_key_arn" {
   type        = string
 }
 
+variable "owner_tag" {
+  description = "Tag Owner requis par formation-require-owner-tag"
+  type        = string
+  default     = ""
+}
+
 variable "enable_flow_logs" {
   description = "Activer les VPC Flow Logs (nécessite iam:CreateRole)"
   type        = bool

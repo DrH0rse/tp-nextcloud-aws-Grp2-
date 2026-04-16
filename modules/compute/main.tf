@@ -4,7 +4,8 @@ resource "aws_cloudwatch_log_group" "nextcloud_docker" {
   retention_in_days = 30
 
   tags = {
-    Name = "${var.project_name}-${var.environment}-docker-logs"
+    Name  = "${var.project_name}-${var.environment}-docker-logs"
+    Owner = var.owner_tag
   }
 }
 
@@ -28,7 +29,8 @@ resource "aws_lb" "nextcloud" {
   }
 
   tags = {
-    Name = "${var.project_name}-${var.environment}-alb"
+    Name  = "${var.project_name}-${var.environment}-alb"
+    Owner = var.owner_tag
   }
 }
 
@@ -52,7 +54,8 @@ resource "aws_lb_target_group" "nextcloud" {
   }
 
   tags = {
-    Name = "${var.project_name}-${var.environment}-tg"
+    Name  = "${var.project_name}-${var.environment}-tg"
+    Owner = var.owner_tag
   }
 }
 
@@ -70,7 +73,7 @@ resource "aws_lb_listener" "https" {
   }
 }
 
-# Redirect HTTP → HTTPS (optionnel mais bonne pratique)
+# Redirect HTTP → HTTPS
 resource "aws_lb_listener" "http_redirect" {
   load_balancer_arn = aws_lb.nextcloud.arn
   port              = 80
@@ -103,14 +106,17 @@ resource "aws_launch_template" "nextcloud" {
   image_id      = var.ami_id
   instance_type = var.instance_type
 
-  # IMDSv2 obligatoire (tfsec: aws-ec2-enforce-launch-template-http-token-imds)
+  # En VPC non default, utiliser les IDs de security groups
+  vpc_security_group_ids = [var.sg_ec2_id]
+
+  # IMDSv2 obligatoire
   metadata_options {
     http_endpoint               = "enabled"
     http_tokens                 = "required"
     http_put_response_hop_limit = 1
   }
 
-  # IAM Instance Profile (pas de clés statiques)
+  # IAM Instance Profile
   dynamic "iam_instance_profile" {
     for_each = var.instance_profile_name != null ? [var.instance_profile_name] : []
     content {
@@ -118,22 +124,16 @@ resource "aws_launch_template" "nextcloud" {
     }
   }
 
-  # EBS root chiffré KMS (tfsec: aws-ec2-enable-volume-encryption)
+  # EBS root chiffré KMS
   block_device_mappings {
     device_name = "/dev/xvda"
     ebs {
       volume_size           = 30
       volume_type           = "gp3"
       encrypted             = true
-      kms_key_id            = var.kms_key_arn
+      #kms_key_id            = var.kms_key_arn
       delete_on_termination = true
     }
-  }
-
-  network_interfaces {
-    associate_public_ip_address = false
-    security_groups             = [var.sg_ec2_id]
-    delete_on_termination       = true
   }
 
   monitoring {
@@ -152,26 +152,39 @@ resource "aws_launch_template" "nextcloud" {
 
   tag_specifications {
     resource_type = "instance"
-    tags = merge(
-      { Name = "${var.project_name}-${var.environment}-instance" },
-      var.owner_tag != "" ? { Owner = var.owner_tag } : {}
-    )
+    tags = {
+      Name        = "${var.project_name}-${var.environment}-instance"
+      Environment = var.environment
+      Project     = var.project_name
+      Owner       = var.owner_tag
+    }
   }
 
   tag_specifications {
     resource_type = "volume"
-    tags = merge(
-      { Name = "${var.project_name}-${var.environment}-volume" },
-      var.owner_tag != "" ? { Owner = var.owner_tag } : {}
-    )
+    tags = {
+      Name        = "${var.project_name}-${var.environment}-volume"
+      Environment = var.environment
+      Project     = var.project_name
+      Owner       = var.owner_tag
+    }
   }
 
   tag_specifications {
     resource_type = "network-interface"
-    tags = merge(
-      { Name = "${var.project_name}-${var.environment}-eni" },
-      var.owner_tag != "" ? { Owner = var.owner_tag } : {}
-    )
+    tags = {
+      Name        = "${var.project_name}-${var.environment}-eni"
+      Environment = var.environment
+      Project     = var.project_name
+      Owner       = var.owner_tag
+    }
+  }
+
+  tags = {
+    Name        = "${var.project_name}-${var.environment}-lt"
+    Environment = var.environment
+    Project     = var.project_name
+    Owner       = var.owner_tag
   }
 
   lifecycle {
@@ -181,6 +194,7 @@ resource "aws_launch_template" "nextcloud" {
 
 # ── Auto Scaling Group ────────────────────────────────────────────────────────
 resource "aws_autoscaling_group" "nextcloud" {
+  count               = var.create_asg ? 1 : 0
   name                = "${var.project_name}-${var.environment}-asg"
   min_size            = var.asg_min_size
   max_size            = var.asg_max_size
@@ -206,7 +220,7 @@ resource "aws_autoscaling_group" "nextcloud" {
   tag {
     key                 = "Name"
     value               = "${var.project_name}-${var.environment}-asg"
-    propagate_at_launch = false
+    propagate_at_launch = true
   }
 
   tag {
@@ -215,7 +229,79 @@ resource "aws_autoscaling_group" "nextcloud" {
     propagate_at_launch = true
   }
 
+  tag {
+    key                 = "Project"
+    value               = var.project_name
+    propagate_at_launch = true
+  }
+
+  tag {
+    key                 = "Owner"
+    value               = var.owner_tag
+    propagate_at_launch = true
+  }
+
   lifecycle {
     create_before_destroy = true
   }
+}
+
+# ── Instance EC2 directe (fallback compte formation) ──────────────────────────
+# ENI créé séparément pour satisfaire formation-require-owner-tag sur network-interface
+resource "aws_network_interface" "nextcloud" {
+  count           = var.create_asg ? 0 : 1
+  subnet_id       = var.private_subnet_ids[0]
+  security_groups = [var.sg_ec2_id]
+
+  tags = {
+    Name  = "${var.project_name}-${var.environment}-eni"
+    Owner = var.owner_tag
+  }
+}
+
+resource "aws_instance" "nextcloud" {
+  count                = var.create_asg ? 0 : 1
+  ami                  = var.ami_id
+  instance_type        = var.instance_type
+  iam_instance_profile = var.instance_profile_name
+
+  network_interface {
+    network_interface_id = aws_network_interface.nextcloud[0].id
+    device_index         = 0
+  }
+
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 1
+  }
+
+  root_block_device {
+    volume_size           = 30
+    volume_type           = "gp3"
+    encrypted             = true
+    delete_on_termination = true
+  }
+
+  user_data = base64encode(templatefile("${path.module}/templates/user_data.sh.tpl", {
+    aws_region       = var.aws_region
+    db_secret_arn    = var.db_secret_arn
+    admin_secret_arn = var.admin_secret_arn
+    db_host          = var.db_host
+    db_name          = var.db_name
+    s3_bucket        = var.nextcloud_bucket_name
+    log_group        = aws_cloudwatch_log_group.nextcloud_docker.name
+  }))
+
+  tags = {
+    Name  = "${var.project_name}-${var.environment}-instance"
+    Owner = var.owner_tag
+  }
+}
+
+resource "aws_lb_target_group_attachment" "nextcloud" {
+  count            = var.create_asg ? 0 : 1
+  target_group_arn = aws_lb_target_group.nextcloud.arn
+  target_id        = aws_instance.nextcloud[0].id
+  port             = 8080
 }
