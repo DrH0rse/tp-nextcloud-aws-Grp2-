@@ -1,0 +1,6 @@
+# Copier ce fichier en backend.tfvars et remplir avec les outputs du bootstrap
+# NE PAS committer backend.tfvars (contient des ARNs sensibles)
+# Usage : terraform init -backend-config=backend.tfvars
+
+bucket     = ""   # output state_bucket_name du bootstrap
+kms_key_id = ""   # output kms_key_arn du bootstrap

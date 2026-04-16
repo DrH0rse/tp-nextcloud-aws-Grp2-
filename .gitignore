@@ -1,0 +1,27 @@
+# Terraform
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup
+*.tfstate.*.backup
+*.tfplan
+crash.log
+crash.*.log
+
+# Backend vars (contiennent ARNs)
+backend.tfvars
+terraform.tfvars
+
+# Secrets
+*.pem
+*.key
+private_key*.txt
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp

@@ -1,0 +1,27 @@
+# Copier ce fichier en terraform.tfvars et adapter les valeurs
+# NE PAS committer terraform.tfvars (contient potentiellement des données sensibles)
+
+aws_region   = "eu-west-3"
+project_name = "nextcloud"
+environment  = "dev"
+
+# Réseau
+vpc_cidr             = "10.0.0.0/16"
+public_subnet_cidrs  = ["10.0.1.0/24", "10.0.2.0/24"]
+private_subnet_cidrs = ["10.0.11.0/24", "10.0.12.0/24"]
+availability_zones   = ["eu-west-3a", "eu-west-3b"]
+
+# Base de données
+db_instance_class = "db.t3.micro"
+db_name           = "nextcloud"
+db_username       = "nextcloud"
+
+# Certificat TLS (self-signed)
+domain_name = "nextcloud.internal"
+
+# EC2 / ASG
+ec2_instance_type    = "t3.small"
+ami_id               = "ami-0c7191dc6b3e08b56"  # Amazon Linux 2023 eu-west-3 (vérifier la date)
+asg_min_size         = 1
+asg_max_size         = 2
+asg_desired_capacity = 1
